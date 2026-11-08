@@ -120,7 +120,7 @@ Follow these steps **in order**. They set up everything the script needs, includ
 sudo apt-get install bash git ghostscript coreutils util-linux findutils grep sed gawk psmisc openssh-client ca-certificates python3 python3-pip python3-venv python3-lxml python3-psutil iputils-ping xvfb nodejs -y
 
 # Clone the repository
-git clone --depth 1 https://github.com/PrajwalKoirala638/dibbs-bsm-dla-mil-documentation.git
+git clone --depth 1 https://github.com/CoreData-Labs/dibbs-bsm-dla-mil-documentation.git
 
 # Enter the folder
 cd dibbs-bsm-dla-mil-documentation
@@ -343,7 +343,7 @@ None of this requires special expertise — just someone willing to learn once a
 
 ## 🔗 Useful links
 
-- 📚 **Project repository:** https://github.com/PrajwalKoirala638/dibbs-bsm-dla-mil-documentation
+- 📚 **Project repository:** https://github.com/CoreData-Labs/dibbs-bsm-dla-mil-documentation.git
 - 🌐 **Official DIBBS website:** https://www.dibbs.bsm.dla.mil/
 - 📅 **Recent RFQ Dates:** https://www.dibbs.bsm.dla.mil/RFQ/RFQDates.aspx?category=recent
 - 🏛️ **Defense Logistics Agency:** https://www.dla.mil/
