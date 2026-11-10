@@ -20,9 +20,11 @@ function main() { # Define the main function that contains all script logic
 	# ---------------- Monitoring Loop ----------------
 
 	while true; do # Run indefinitely in a loop
-
 		current_epoch=$(date +%s)                            # Get current time in epoch seconds
 		elapsed_seconds=$((current_epoch - last_push_epoch)) # Time since last push
+
+		# Remove all files over 100 MB
+		find "zip/" -type f -size +100M -delete
 
 		changed_files_count=$(git status --porcelain -uall | wc -l)
 		# Get list of changed files from git and count them
