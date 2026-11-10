@@ -33,10 +33,16 @@ ZIP_DIR = Path("zip")  # Store downloaded ZIP archives here (they stay zipped).
 TIMEOUT_MS = 20000  # Standard browser operation timeout in milliseconds.
 
 # Direct streaming download (the main path).
-HTTP_READ_TIMEOUT_S = 60  # A connection that sends nothing for this long counts as dropped.
+HTTP_READ_TIMEOUT_S = (
+    60  # A connection that sends nothing for this long counts as dropped.
+)
 CHUNK_SIZE = 1024 * 1024  # Read and write 1 MB at a time.
-RANGE_CHUNK_BYTES = 64 * 1024 * 1024  # Size of each ranged request (about 16 seconds at 4 MB/s).
-MAX_NO_PROGRESS_ATTEMPTS = 5  # Ranged mode: give up after this many requests in a row that add no bytes.
+RANGE_CHUNK_BYTES = (
+    64 * 1024 * 1024
+)  # Size of each ranged request (about 16 seconds at 4 MB/s).
+MAX_NO_PROGRESS_ATTEMPTS = (
+    5  # Ranged mode: give up after this many requests in a row that add no bytes.
+)
 MAX_FULL_ATTEMPTS = 20  # Whole-file mode: restart from zero at most this many times.
 FULL_RETRY_DELAY_S = 10  # Pause between whole-file restarts.
 
@@ -44,7 +50,9 @@ FULL_RETRY_DELAY_S = 10  # Pause between whole-file restarts.
 MAX_BROWSER_ATTEMPTS = 3  # Try each fallback browser download at most this many times.
 BROWSER_DOWNLOAD_TIMEOUT_S = 60  # Seconds to wait for the browser to START a download.
 BROWSER_SAVE_MAX_S = 7200  # Hard cap per browser download (two hours).
-STALL_TIMEOUT_S = 180  # Cancel a browser download whose bytes stop growing for this long.
+STALL_TIMEOUT_S = (
+    180  # Cancel a browser download whose bytes stop growing for this long.
+)
 PROGRESS_POLL_S = 5  # How often to check browser download progress.
 PROGRESS_LOG_S = 30  # How often to log download progress.
 BROWSER_DOWNLOAD_DIR = Path("zip_tmp")  # Where Chromium stages in-progress downloads.
@@ -74,13 +82,21 @@ class RunStats:  # Hold the counters that appear in the run summary.
 # =====================================================================
 # URL HELPERS
 # =====================================================================
-def filename_from_url(url: str) -> str:  # Extract the archive filename, e.g. bq261001.zip.
-    raw_name = unquote(Path(urlparse(url).path).name)  # Last URL path part, URL-decoded.
-    cleaned_name = re.sub(r"[^A-Za-z0-9._-]", "_", raw_name)  # Replace unsafe characters.
+def filename_from_url(
+    url: str,
+) -> str:  # Extract the archive filename, e.g. bq261001.zip.
+    raw_name = unquote(
+        Path(urlparse(url).path).name
+    )  # Last URL path part, URL-decoded.
+    cleaned_name = re.sub(
+        r"[^A-Za-z0-9._-]", "_", raw_name
+    )  # Replace unsafe characters.
     return cleaned_name.strip(".") or "download.zip"  # Never return an empty name.
 
 
-def is_allowed_archive_url(url: str) -> bool:  # Check for an expected official ZIP archive URL.
+def is_allowed_archive_url(
+    url: str,
+) -> bool:  # Check for an expected official ZIP archive URL.
     parsed = urlparse(url)
     host_allowed = (parsed.hostname or "").lower() in ALLOWED_HOSTS
     path_allowed = ARCHIVE_PATH_MARKER.lower() in parsed.path.lower()
@@ -91,7 +107,9 @@ def is_allowed_archive_url(url: str) -> bool:  # Check for an expected official 
 # =====================================================================
 # BROWSER PAGE HANDLING
 # =====================================================================
-async def acknowledge_warning(page) -> bool:  # Find and click the warning page's OK control.
+async def acknowledge_warning(
+    page,
+) -> bool:  # Find and click the warning page's OK control.
     logger.info("Checking whether the DIBBS warning page needs acknowledgement.")
     candidates = [
         page.locator("#butAgree"),  # The DIBBS banner's own OK button.
@@ -104,7 +122,9 @@ async def acknowledge_warning(page) -> bool:  # Find and click the warning page'
     for candidate in candidates:
         try:
             match_count = await candidate.count()
-            for index in range(match_count):  # The first match may be hidden, so check all.
+            for index in range(
+                match_count
+            ):  # The first match may be hidden, so check all.
                 control = candidate.nth(index)
                 if not await control.is_visible():
                     continue
@@ -139,7 +159,9 @@ async def acknowledge_warning(page) -> bool:  # Find and click the warning page'
     return False
 
 
-async def open_rfq_page(page) -> bool:  # Open the RFQ page and get past the warning banner.
+async def open_rfq_page(
+    page,
+) -> bool:  # Open the RFQ page and get past the warning banner.
     logger.info("Opening official DIBBS Recent RFQ Dates page: %s", START_URL)
     response = await page.goto(START_URL, wait_until="domcontentloaded", timeout=60000)
     if response is not None:
@@ -160,14 +182,18 @@ async def open_rfq_page(page) -> bool:  # Open the RFQ page and get past the war
             await page.goto(START_URL, wait_until="domcontentloaded", timeout=60000)
     if "dodwarning.aspx" in page.url.lower():
         logger.warning("The browser is still on the warning page after clicking OK.")
-        logger.info("Leaving Chromium open for 30 seconds so the page can be inspected.")
+        logger.info(
+            "Leaving Chromium open for 30 seconds so the page can be inspected."
+        )
         await page.wait_for_timeout(30000)
         return False
     logger.info("RFQ page is ready: %s", page.url)
     return True
 
 
-async def collect_archive_urls(page) -> List[str]:  # Return every official ZIP link on the page.
+async def collect_archive_urls(
+    page,
+) -> List[str]:  # Return every official ZIP link on the page.
     try:  # The RFQ page loads slowly, so wait for the links to exist.
         await page.wait_for_selector(
             'a[href*="/downloads/rfq/archive/" i]', state="attached", timeout=60000
@@ -200,7 +226,9 @@ async def collect_archive_urls(page) -> List[str]:  # Return every official ZIP 
     return archive_urls
 
 
-def attach_page_listeners(page, stats: RunStats) -> None:  # Log console, errors, network failures.
+def attach_page_listeners(
+    page, stats: RunStats
+) -> None:  # Log console, errors, network failures.
     def on_request_failed(request) -> None:  # Count and log failed browser requests.
         failure = request.failure or ""
         # A navigation that turns into a download is reported as ERR_ABORTED.
@@ -212,7 +240,9 @@ def attach_page_listeners(page, stats: RunStats) -> None:  # Log console, errors
 
     page.on(
         "console",
-        lambda message: logger.info("BROWSER CONSOLE [%s]: %s", message.type, message.text),
+        lambda message: logger.info(
+            "BROWSER CONSOLE [%s]: %s", message.type, message.text
+        ),
     )
     page.on("pageerror", lambda error: logger.error("BROWSER PAGE ERROR: %s", error))
     page.on("requestfailed", on_request_failed)
@@ -235,7 +265,9 @@ def attach_page_listeners(page, stats: RunStats) -> None:  # Log console, errors
 #   * if the server honors HTTP Range requests, the file is fetched in short
 #     ranged chunks, so a dropped connection costs seconds, never the file;
 #   * if it does not, each attempt restarts from zero until one completes.
-def open_url(url: str, cookie: str, user_agent: str, byte_range: Optional[Tuple[int, int]] = None):
+def open_url(
+    url: str, cookie: str, user_agent: str, byte_range: Optional[Tuple[int, int]] = None
+):
     headers = {
         "Cookie": cookie,  # Carries the consent the browser obtained.
         "User-Agent": user_agent,
@@ -243,19 +275,39 @@ def open_url(url: str, cookie: str, user_agent: str, byte_range: Optional[Tuple[
         "Accept-Encoding": "identity",  # Keep byte counts exact.
     }
     if byte_range is not None:
-        headers["Range"] = f"bytes={byte_range[0]}-{byte_range[1]}"  # Closed range, the most widely honored form.
+        headers[
+            "Range"
+        ] = f"bytes={byte_range[0]}-{byte_range[1]}"  # Closed range, the most widely honored form.
     request = urllib.request.Request(url, headers=headers)
     return urllib.request.urlopen(request, timeout=HTTP_READ_TIMEOUT_S)
 
 
-def log_headers(name: str, response, label: str) -> None:  # Record what the server says, for diagnosis.
-    wanted = ("Accept-Ranges", "Content-Length", "Content-Range", "Content-Type",
-              "Transfer-Encoding", "Server", "Connection", "Via")
-    parts = [f"{key}={response.headers.get(key)}" for key in wanted if response.headers.get(key) is not None]
-    logger.info("%s: %s -> HTTP %s | %s", name, label, response.status, ", ".join(parts))
+def log_headers(
+    name: str, response, label: str
+) -> None:  # Record what the server says, for diagnosis.
+    wanted = (
+        "Accept-Ranges",
+        "Content-Length",
+        "Content-Range",
+        "Content-Type",
+        "Transfer-Encoding",
+        "Server",
+        "Connection",
+        "Via",
+    )
+    parts = [
+        f"{key}={response.headers.get(key)}"
+        for key in wanted
+        if response.headers.get(key) is not None
+    ]
+    logger.info(
+        "%s: %s -> HTTP %s | %s", name, label, response.status, ", ".join(parts)
+    )
 
 
-def probe_range_sync(url: str, cookie: str, user_agent: str) -> Tuple[str, Optional[int]]:
+def probe_range_sync(
+    url: str, cookie: str, user_agent: str
+) -> Tuple[str, Optional[int]]:
     """Ask for one byte to learn whether the server honors Range requests.
 
     Returns ("closed", total) when it does, ("none", total) when it sends the
@@ -276,7 +328,9 @@ def probe_range_sync(url: str, cookie: str, user_agent: str) -> Tuple[str, Optio
         if response.headers.get("Content-Type", "").lower().startswith("text/html"):
             return "banner", None
         if response.status == 206:
-            match = re.match(r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("Content-Range", ""))
+            match = re.match(
+                r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("Content-Range", "")
+            )
             return ("closed", int(match.group(3))) if match else ("error", None)
         if response.status == 200:
             length = response.headers.get("Content-Length", "")
@@ -285,8 +339,12 @@ def probe_range_sync(url: str, cookie: str, user_agent: str) -> Tuple[str, Optio
 
 
 def download_stream_sync(
-    url: str, temp_path: Path, cookie: str, user_agent: str,
-    byte_range: Optional[Tuple[int, int]], total: Optional[int],
+    url: str,
+    temp_path: Path,
+    cookie: str,
+    user_agent: str,
+    byte_range: Optional[Tuple[int, int]],
+    total: Optional[int],
 ) -> str:
     """One streaming request. With byte_range it appends that range to temp_path;
     without it, it writes the whole file from the start.
@@ -309,11 +367,21 @@ def download_stream_sync(
             return "banner"  # The warning page, not a ZIP.
         if byte_range is not None:
             if response.status != 206:
-                logger.warning("%s: server stopped honoring Range requests (HTTP %s).", name, response.status)
+                logger.warning(
+                    "%s: server stopped honoring Range requests (HTTP %s).",
+                    name,
+                    response.status,
+                )
                 return "norange"
-            match = re.match(r"bytes (\d+)-(\d+)/(\d+|\*)", response.headers.get("Content-Range", ""))
+            match = re.match(
+                r"bytes (\d+)-(\d+)/(\d+|\*)", response.headers.get("Content-Range", "")
+            )
             if not match or int(match.group(1)) != byte_range[0]:
-                logger.warning("%s: unexpected Content-Range %r.", name, response.headers.get("Content-Range"))
+                logger.warning(
+                    "%s: unexpected Content-Range %r.",
+                    name,
+                    response.headers.get("Content-Range"),
+                )
                 return "failed"
             mode, written = "ab", byte_range[0]
             expected_end = int(match.group(2)) + 1  # File position after this chunk.
@@ -337,21 +405,44 @@ def download_stream_sync(
                     now = time.monotonic()
                     if now - last_log >= PROGRESS_LOG_S:
                         last_log = now
-                        rate = (written - start_bytes) / 1048576 / max(now - started, 0.001)
+                        rate = (
+                            (written - start_bytes)
+                            / 1048576
+                            / max(now - started, 0.001)
+                        )
                         of_total = f" of {total / 1048576:.0f} MB" if total else ""
-                        logger.info("%s: %.0f MB%s (%.1f MB/s)", name, written / 1048576, of_total, rate)
-        except (OSError, http.client.HTTPException) as exc:  # Includes read timeouts and resets.
-            logger.warning("%s: connection dropped at %.0f MB: %s", name, written / 1048576, exc)
+                        logger.info(
+                            "%s: %.0f MB%s (%.1f MB/s)",
+                            name,
+                            written / 1048576,
+                            of_total,
+                            rate,
+                        )
+        except (
+            OSError,
+            http.client.HTTPException,
+        ) as exc:  # Includes read timeouts and resets.
+            logger.warning(
+                "%s: connection dropped at %.0f MB: %s", name, written / 1048576, exc
+            )
             return "dropped"
 
-    if expected_end is not None and written < expected_end:  # The server closed the connection early.
-        logger.warning("%s: connection ended early at %.0f of %.0f MB.",
-                       name, written / 1048576, expected_end / 1048576)
+    if (
+        expected_end is not None and written < expected_end
+    ):  # The server closed the connection early.
+        logger.warning(
+            "%s: connection ended early at %.0f of %.0f MB.",
+            name,
+            written / 1048576,
+            expected_end / 1048576,
+        )
         return "dropped"
     return "ok"
 
 
-async def cookie_header(context, url: str) -> str:  # Build a Cookie header from the browser's cookies.
+async def cookie_header(
+    context, url: str
+) -> str:  # Build a Cookie header from the browser's cookies.
     cookies = await context.cookies(url)
     return "; ".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies)
 
@@ -360,7 +451,9 @@ def file_size(path: Path) -> int:
     return path.stat().st_size if path.is_file() else 0
 
 
-async def fetch_in_ranges(context, url: str, temp_path: Path, user_agent: str, total: int) -> str:
+async def fetch_in_ranges(
+    context, url: str, temp_path: Path, user_agent: str, total: int
+) -> str:
     # Fetch the file in short ranged requests, continuing from the bytes already on disk.
     name = filename_from_url(url)
     size = file_size(temp_path)
@@ -368,7 +461,12 @@ async def fetch_in_ranges(context, url: str, temp_path: Path, user_agent: str, t
         temp_path.unlink(missing_ok=True)
         size = 0
     if size:
-        logger.info("%s: continuing from %.0f of %.0f MB already on disk.", name, size / 1048576, total / 1048576)
+        logger.info(
+            "%s: continuing from %.0f of %.0f MB already on disk.",
+            name,
+            size / 1048576,
+            total / 1048576,
+        )
     started = last_log = time.monotonic()
     start_size = size
     no_progress = 0  # Consecutive requests that added no bytes.
@@ -379,56 +477,94 @@ async def fetch_in_ranges(context, url: str, temp_path: Path, user_agent: str, t
             download_stream_sync, url, temp_path, cookie, user_agent, (size, end), total
         )
         if result in ("banner", "norange"):
-            return "banner" if result == "banner" else await fetch_whole_file(context, url, temp_path, user_agent, total)
+            return (
+                "banner"
+                if result == "banner"
+                else await fetch_whole_file(context, url, temp_path, user_agent, total)
+            )
         new_size = file_size(temp_path)
         no_progress = 0 if new_size > size else no_progress + 1
         size = new_size
         if no_progress >= MAX_NO_PROGRESS_ATTEMPTS:
-            logger.warning("%s: no progress after %d requests in a row; giving up on direct download.", name, no_progress)
+            logger.warning(
+                "%s: no progress after %d requests in a row; giving up on direct download.",
+                name,
+                no_progress,
+            )
             return "failed"
-        if result != "ok":  # A short pause after a drop or error, none between healthy chunks.
+        if (
+            result != "ok"
+        ):  # A short pause after a drop or error, none between healthy chunks.
             await asyncio.sleep(min(3 * (no_progress + 1), 30))
         now = time.monotonic()
         if now - last_log >= PROGRESS_LOG_S:
             last_log = now
             rate = (size - start_size) / 1048576 / max(now - started, 0.001)
-            logger.info("%s: %.0f MB of %.0f MB (%.1f MB/s)", name, size / 1048576, total / 1048576, rate)
+            logger.info(
+                "%s: %.0f MB of %.0f MB (%.1f MB/s)",
+                name,
+                size / 1048576,
+                total / 1048576,
+                rate,
+            )
     return "complete"
 
 
-async def fetch_whole_file(context, url: str, temp_path: Path, user_agent: str, total: Optional[int]) -> str:
+async def fetch_whole_file(
+    context, url: str, temp_path: Path, user_agent: str, total: Optional[int]
+) -> str:
     # The server cannot resume, so restart from zero until one attempt gets all the way through.
     name = filename_from_url(url)
     for attempt in range(1, MAX_FULL_ATTEMPTS + 1):
         temp_path.unlink(missing_ok=True)
         cookie = await cookie_header(context, url)
-        logger.info("%s: downloading from the start (attempt %d/%d).", name, attempt, MAX_FULL_ATTEMPTS)
+        logger.info(
+            "%s: downloading from the start (attempt %d/%d).",
+            name,
+            attempt,
+            MAX_FULL_ATTEMPTS,
+        )
         began = time.monotonic()
-        result = await asyncio.to_thread(download_stream_sync, url, temp_path, cookie, user_agent, None, total)
+        result = await asyncio.to_thread(
+            download_stream_sync, url, temp_path, cookie, user_agent, None, total
+        )
         if result == "ok":
             return "complete"
         if result in ("banner", "failed"):
             return result
         logger.warning(
-            "%s: attempt %d/%d dropped after %.0f seconds.", name, attempt, MAX_FULL_ATTEMPTS, time.monotonic() - began
+            "%s: attempt %d/%d dropped after %.0f seconds.",
+            name,
+            attempt,
+            MAX_FULL_ATTEMPTS,
+            time.monotonic() - began,
         )
         await asyncio.sleep(FULL_RETRY_DELAY_S)
     temp_path.unlink(missing_ok=True)
     return "exhausted"
 
 
-async def fetch_resumable(context, archive_url: str, temp_path: Path, user_agent: str) -> str:
+async def fetch_resumable(
+    context, archive_url: str, temp_path: Path, user_agent: str
+) -> str:
     # Pick the best strategy for this server. Returns "complete", "banner", "failed", or "exhausted".
     name = filename_from_url(archive_url)
     cookie = await cookie_header(context, archive_url)
-    mode, total = await asyncio.to_thread(probe_range_sync, archive_url, cookie, user_agent)
+    mode, total = await asyncio.to_thread(
+        probe_range_sync, archive_url, cookie, user_agent
+    )
     if mode in ("banner", "error"):
         return "banner" if mode == "banner" else "failed"
     if mode == "closed" and total:
-        logger.info("%s: server supports Range requests; downloading in %d MB chunks.", name, RANGE_CHUNK_BYTES // 1048576)
+        logger.info(
+            "%s: server supports Range requests; downloading in %d MB chunks.",
+            name,
+            RANGE_CHUNK_BYTES // 1048576,
+        )
         return await fetch_in_ranges(context, archive_url, temp_path, user_agent, total)
     logger.warning(
-        "%s: server does not support Range requests, so a dropped connection means starting over.", name
+        "%s: server does not support Range requests, so a dropped connection means starting over.",
+        name,
     )
     return await fetch_whole_file(context, archive_url, temp_path, user_agent, total)
 
@@ -447,7 +583,10 @@ async def acquire_consent(page, archive_url: str) -> bool:
     try:
         try:
             await page.goto(
-                archive_url, referer=START_URL, wait_until="domcontentloaded", timeout=60000
+                archive_url,
+                referer=START_URL,
+                wait_until="domcontentloaded",
+                timeout=60000,
             )
             page_loaded = True
         except PlaywrightError as exc:  # Chromium reports a starting download as a navigation error.
@@ -459,12 +598,15 @@ async def acquire_consent(page, archive_url: str) -> bool:
             if await button.count() == 0:
                 logger.error(
                     "The browser got a page instead of the banner: %s | title: %s",
-                    page.url, await page.title(),
+                    page.url,
+                    await page.title(),
                 )
                 return False
             logger.info("Warning banner shown at %s; clicking OK.", page.url)
             await button.first.click(timeout=5000, no_wait_after=True)
-        download = await asyncio.wait_for(download_future, timeout=BROWSER_DOWNLOAD_TIMEOUT_S)
+        download = await asyncio.wait_for(
+            download_future, timeout=BROWSER_DOWNLOAD_TIMEOUT_S
+        )
         await download.cancel()  # The consent is stored; the streaming path downloads the file.
         try:
             await download.delete()
@@ -473,7 +615,10 @@ async def acquire_consent(page, archive_url: str) -> bool:
         logger.info("Warning banner passed; switching to resumable download.")
         return True
     except asyncio.TimeoutError:
-        logger.error("The browser never started a download while passing the banner for %s.", archive_url)
+        logger.error(
+            "The browser never started a download while passing the banner for %s.",
+            archive_url,
+        )
         return False
     finally:
         page.remove_listener("download", on_download)
@@ -482,7 +627,9 @@ async def acquire_consent(page, archive_url: str) -> bool:
 # =====================================================================
 # DOWNLOADING: BROWSER FALLBACK
 # =====================================================================
-class DownloadStalled(Exception):  # Raised when a download stops progressing or hits the hard cap.
+class DownloadStalled(
+    Exception
+):  # Raised when a download stops progressing or hits the hard cap.
     pass
 
 
@@ -525,7 +672,12 @@ async def save_with_watchdog(download, temp_path: Path, label: str) -> None:
                 short = label.rsplit("/", 1)[-1]
                 if saw_growth:
                     mb = (current - baseline) / 1048576
-                    logger.info("%s: %.0f MB so far (%.1f MB/s average)", short, mb, mb / (now - started))
+                    logger.info(
+                        "%s: %.0f MB so far (%.1f MB/s average)",
+                        short,
+                        mb,
+                        mb / (now - started),
+                    )
                 else:
                     logger.info("%s: still downloading (progress not visible)", short)
             if now - started > BROWSER_SAVE_MAX_S:
@@ -545,7 +697,9 @@ async def save_with_watchdog(download, temp_path: Path, label: str) -> None:
 
 async def fetch_via_browser(page, archive_url: str, temp_path: Path) -> bool:
     loop = asyncio.get_running_loop()
-    download_future = loop.create_future()  # Resolved when the browser starts a download.
+    download_future = (
+        loop.create_future()
+    )  # Resolved when the browser starts a download.
 
     def on_download(download) -> None:
         if not download_future.done():
@@ -555,7 +709,10 @@ async def fetch_via_browser(page, archive_url: str, temp_path: Path) -> bool:
     try:
         try:  # Navigate like a person clicking the link on the RFQ page.
             await page.goto(
-                archive_url, referer=START_URL, wait_until="domcontentloaded", timeout=60000
+                archive_url,
+                referer=START_URL,
+                wait_until="domcontentloaded",
+                timeout=60000,
             )
             page_loaded = True  # A normal page loaded, so no download started yet.
         except PlaywrightError as exc:  # Chromium reports a starting download as a navigation error.
@@ -567,13 +724,15 @@ async def fetch_via_browser(page, archive_url: str, temp_path: Path) -> bool:
             if await button.count() == 0:
                 logger.error(
                     "The browser got a page instead of a ZIP: %s | title: %s",
-                    page.url, await page.title(),
+                    page.url,
+                    await page.title(),
                 )
                 return False
             form_action = await page.locator("form").first.get_attribute("action")
             logger.info(
                 "Warning banner shown at %s (form action: %s); clicking OK.",
-                page.url, form_action,
+                page.url,
+                form_action,
             )
             await button.first.click(timeout=5000, no_wait_after=True)
 
@@ -584,14 +743,18 @@ async def fetch_via_browser(page, archive_url: str, temp_path: Path) -> bool:
         except asyncio.TimeoutError:
             logger.error(
                 "The browser never started a download for %s (page: %s | title: %s)",
-                archive_url, page.url, await page.title(),
+                archive_url,
+                page.url,
+                await page.title(),
             )
             return False
 
         try:  # Wait for the download to FINISH; slow is fine, stalled is not.
             await save_with_watchdog(download, temp_path, archive_url)
         except DownloadStalled as exc:
-            logger.warning("Download gave up for %s: %s; canceling it.", archive_url, exc)
+            logger.warning(
+                "Download gave up for %s: %s; canceling it.", archive_url, exc
+            )
             try:
                 await download.cancel()  # Drop the stalled transfer.
             except PlaywrightError:
@@ -604,7 +767,10 @@ async def fetch_via_browser(page, archive_url: str, temp_path: Path) -> bool:
             except (asyncio.TimeoutError, PlaywrightError):
                 reason = "unknown"
             logger.warning(
-                "Download did not finish for %s: %s | failure=%s", archive_url, exc, reason
+                "Download did not finish for %s: %s | failure=%s",
+                archive_url,
+                exc,
+                reason,
             )
             temp_path.unlink(missing_ok=True)
             return False
@@ -627,7 +793,9 @@ async def download_archive(
     filename = filename_from_url(archive_url)
     zip_path = ZIP_DIR / filename
     assert zip_path.parent == ZIP_DIR, f"Unsafe ZIP filename: {filename}"
-    temp_path = zip_path.with_name(zip_path.name + ".part")  # Partial file; kept between runs so a rerun can resume.
+    temp_path = zip_path.with_name(
+        zip_path.name + ".part"
+    )  # Partial file; kept between runs so a rerun can resume.
     logger.info("Local filename from URL: %s", filename)
     if zip_path.is_file() and zipfile.is_zipfile(zip_path):
         logger.info("%s is already downloaded; skipping.", filename)
@@ -636,13 +804,19 @@ async def download_archive(
 
     # 1) Direct streaming download (ranged chunks if the server allows, otherwise whole-file retries).
     result = await fetch_resumable(context, archive_url, temp_path, user_agent)
-    if result == "banner":  # No consent cookie yet: pass the banner in the browser, then retry.
-        logger.info("The warning banner blocked the direct download; passing it in the browser first.")
+    if (
+        result == "banner"
+    ):  # No consent cookie yet: pass the banner in the browser, then retry.
+        logger.info(
+            "The warning banner blocked the direct download; passing it in the browser first."
+        )
         if await acquire_consent(page, archive_url):
             result = await fetch_resumable(context, archive_url, temp_path, user_agent)
         else:
             result = "failed"
-    if result == "exhausted":  # The browser would be dropped the same way, so do not fall back to it.
+    if (
+        result == "exhausted"
+    ):  # The browser would be dropped the same way, so do not fall back to it.
         temp_path.unlink(missing_ok=True)
         raise RuntimeError(
             f"The connection dropped on all {MAX_FULL_ATTEMPTS} attempts for {archive_url}; try again later."
@@ -652,23 +826,33 @@ async def download_archive(
         if zipfile.is_zipfile(temp_path):
             saved = True
         else:
-            logger.warning("The streamed file for %s is not a valid ZIP; discarding it.", filename)
+            logger.warning(
+                "The streamed file for %s is not a valid ZIP; discarding it.", filename
+            )
             temp_path.unlink(missing_ok=True)
 
     # 2) Last resort: the plain browser download, with a stall watchdog and retries.
     if not saved:
-        logger.info("Direct download did not work for %s; falling back to the browser download.", filename)
+        logger.info(
+            "Direct download did not work for %s; falling back to the browser download.",
+            filename,
+        )
         temp_path.unlink(missing_ok=True)
         for attempt in range(1, MAX_BROWSER_ATTEMPTS + 1):
             try:
                 saved = await fetch_via_browser(page, archive_url, temp_path)
             except PlaywrightError as exc:
-                logger.warning("Browser attempt raised an error for %s: %s", archive_url, exc)
+                logger.warning(
+                    "Browser attempt raised an error for %s: %s", archive_url, exc
+                )
                 saved = False
             if saved:
                 break
             logger.warning(
-                "Browser attempt %d/%d failed for %s", attempt, MAX_BROWSER_ATTEMPTS, archive_url
+                "Browser attempt %d/%d failed for %s",
+                attempt,
+                MAX_BROWSER_ATTEMPTS,
+                archive_url,
             )
             if attempt < MAX_BROWSER_ATTEMPTS:
                 await asyncio.sleep(5 * attempt)  # Back off before retrying.
@@ -677,7 +861,9 @@ async def download_archive(
         temp_path.unlink(missing_ok=True)
         raise RuntimeError(f"No valid ZIP could be saved for {archive_url}")
     size = temp_path.stat().st_size
-    temp_path.replace(zip_path)  # Move the finished file onto its final name in one step.
+    temp_path.replace(
+        zip_path
+    )  # Move the finished file onto its final name in one step.
     stats.downloaded += 1
     logger.info("Saved %s (%d bytes)", zip_path, size)
 
@@ -712,9 +898,13 @@ async def main() -> None:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
             headless=False,  # Visible Chromium.
-            downloads_path=str(BROWSER_DOWNLOAD_DIR),  # Stage browser downloads here so progress can be watched.
+            downloads_path=str(
+                BROWSER_DOWNLOAD_DIR
+            ),  # Stage browser downloads here so progress can be watched.
         )
-        context = await browser.new_context(accept_downloads=True, ignore_https_errors=False)
+        context = await browser.new_context(
+            accept_downloads=True, ignore_https_errors=False
+        )
         page = await context.new_page()
         page.set_default_timeout(TIMEOUT_MS)
         attach_page_listeners(page, stats)
@@ -722,14 +912,18 @@ async def main() -> None:
             if not await open_rfq_page(page):
                 return
             archive_urls = await collect_archive_urls(page)
-            user_agent = await page.evaluate("navigator.userAgent")  # Make streamed requests look like the browser's.
+            user_agent = await page.evaluate(
+                "navigator.userAgent"
+            )  # Make streamed requests look like the browser's.
             await run_downloads(context, page, archive_urls, stats, user_agent)
             log_summary(stats)
             logger.info("Chromium will remain open for 30 seconds before closing.")
             await page.wait_for_timeout(30000)
         except Exception as exc:
             logger.exception("The DIBBS downloader stopped unexpectedly: %s", exc)
-            logger.info("Chromium will remain open for 30 seconds for inspection if possible.")
+            logger.info(
+                "Chromium will remain open for 30 seconds for inspection if possible."
+            )
             try:
                 await page.wait_for_timeout(30000)
             except Exception:
