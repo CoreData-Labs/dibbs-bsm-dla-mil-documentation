@@ -1,6 +1,7 @@
 # =====================================================================
 # IMPORTS
 # =====================================================================
+import shutil  # The shutil module provides high-level functions for managing files and directories.
 import asyncio  # Provide asynchronous execution for Playwright.
 import http.client  # Exception types for broken HTTP transfers.
 import logging  # Record progress, warnings, and errors in the console.
@@ -933,6 +934,8 @@ async def main() -> None:
                 await context.close()
             finally:
                 await browser.close()
+        # Deletes the folder and everything inside it
+        shutil.rmtree(BROWSER_DOWNLOAD_DIR)
 
 
 if __name__ == "__main__":
