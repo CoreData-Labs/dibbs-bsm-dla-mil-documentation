@@ -137,8 +137,11 @@ pip install -r requirements.txt
 # Install the required Python packages
 pip install playwright
 
-# Install Playwright browsers and their dependencies
-playwright install --with-deps chromium
+# Install Playwright system dependencies
+playwright install --with-deps
+
+# Install Playwright Chromium
+playwright install chromium
 
 # Run the script
 python3 main.py
